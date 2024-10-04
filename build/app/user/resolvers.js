@@ -48,7 +48,8 @@ const queries = {
             return null;
         const user = yield db_1.prismaClient.user.findUnique({ where: { id } });
         return user;
-    })
+    }),
+    getUserById: (parent_1, _a, ctx_1) => __awaiter(void 0, [parent_1, _a, ctx_1], void 0, function* (parent, { id }, ctx) { return db_1.prismaClient.user.findUnique({ where: { id } }); })
 };
 const extraResolver = {
     User: {
