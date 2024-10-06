@@ -11,6 +11,20 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.resolvers = void 0;
 const db_1 = require("../../clients/db");
+const s3_request_presigner_1 = require("@aws-sdk/s3-request-presigner");
+const client_s3_1 = require("@aws-sdk/client-s3");
+const accessKeyId = process.env.S3_ACCESS;
+const secretAccessKey = process.env.S3_SECRET_ACCESS;
+if (!accessKeyId || !secretAccessKey) {
+    throw new Error("AWS credentials are not set in the environment variables.");
+}
+const s3Client = new client_s3_1.S3Client({
+    region: 'ap-south-1',
+    credentials: {
+        accessKeyId: accessKeyId,
+        secretAccessKey: secretAccessKey,
+    },
+});
 const mutations = {
     createTweet: (parent_1, _a, ctx_1) => __awaiter(void 0, [parent_1, _a, ctx_1], void 0, function* (parent, { payload }, ctx) {
         var _b;
@@ -33,6 +47,19 @@ const extraResolver = {
     }
 };
 const queries = {
-    getAllTweets: () => db_1.prismaClient.tweet.findMany({ orderBy: { createdAt: "desc" } })
+    getAllTweets: () => db_1.prismaClient.tweet.findMany({ orderBy: { createdAt: "desc" } }),
+    getSignedURLForTweet: (parent_1, _a, ctx_1) => __awaiter(void 0, [parent_1, _a, ctx_1], void 0, function* (parent, { imageType, imageName }, ctx) {
+        if (!ctx.user || !ctx.user.id)
+            throw new Error('Unauthorized');
+        const allowedImageTypes = ["image/jpg", "image/jpeg", "image/png", "image/webp"];
+        if (!allowedImageTypes.includes(imageType))
+            throw new Error('Unsupported Image Format');
+        const putObjectCommand = new client_s3_1.PutObjectCommand({
+            Bucket: 'twitter-dev-harsh',
+            Key: `upload/${ctx.user.id}/tweets/${imageName}-${Date.now().toString()}.${imageType}`
+        });
+        const signedUrl = yield (0, s3_request_presigner_1.getSignedUrl)(s3Client, putObjectCommand);
+        return signedUrl;
+    })
 };
 exports.resolvers = { mutations, extraResolver, queries };
