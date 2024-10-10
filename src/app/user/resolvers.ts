@@ -3,6 +3,8 @@ import { prismaClient } from "../../clients/db";
 import JWTService from "../../services/jwt";
 import { GraphqlContext } from "../../interfaces";
 import { User } from "@prisma/client";
+import UserService from "../../services/user";
+import { mutations } from "./mutations";
 interface GoogleTokenResult {
     iss?: string;
     nbf?: string;
@@ -70,4 +72,12 @@ const extraResolver = {
         tweets: (parent: User) => prismaClient.tweet.findMany({ where: { author: { id: parent.id } } })
     }
 }
-export const resolvers = { queries, extraResolver }
+
+const mutations={
+    followUser:async(parent:any,{to}:{to:string},ctx:GraphqlContext)=>{
+        if(!ctx.user || !ctx.user.id) throw new Error('Unauthenticated');
+        await UserService.followUser(ctx.user.id,to )
+        return true;
+    }
+}
+export const resolvers = { queries, extraResolver, mutations}
