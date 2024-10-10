@@ -16,6 +16,7 @@ exports.resolvers = void 0;
 const axios_1 = __importDefault(require("axios"));
 const db_1 = require("../../clients/db");
 const jwt_1 = __importDefault(require("../../services/jwt"));
+const user_1 = __importDefault(require("../../services/user"));
 const queries = {
     verifyGoogleToken: (parent_1, _a) => __awaiter(void 0, [parent_1, _a], void 0, function* (parent, { token }) {
         const googleToken = token;
@@ -53,7 +54,29 @@ const queries = {
 };
 const extraResolver = {
     User: {
-        tweets: (parent) => db_1.prismaClient.tweet.findMany({ where: { author: { id: parent.id } } })
+        tweets: (parent) => __awaiter(void 0, void 0, void 0, function* () { return yield db_1.prismaClient.tweet.findMany({ where: { author: { id: parent.id } } }); }),
+        followers: (parent) => __awaiter(void 0, void 0, void 0, function* () {
+            const result = yield db_1.prismaClient.follows.findMany({ where: { following: { id: parent.id } }, include: { follower: true } });
+            return result.map((ele) => ele.follower);
+        }),
+        following: (parent) => __awaiter(void 0, void 0, void 0, function* () {
+            const result = yield db_1.prismaClient.follows.findMany({ where: { follower: { id: parent.id } }, include: { following: true } });
+            return result.map((ele) => ele.following);
+        }),
     }
 };
-exports.resolvers = { queries, extraResolver };
+const mutations = {
+    followUser: (parent_1, _a, ctx_1) => __awaiter(void 0, [parent_1, _a, ctx_1], void 0, function* (parent, { to }, ctx) {
+        if (!ctx.user || !ctx.user.id)
+            throw new Error('Unauthenticated');
+        yield user_1.default.followUser(ctx.user.id, to);
+        return true;
+    }),
+    unfollowUser: (parent_1, _a, ctx_1) => __awaiter(void 0, [parent_1, _a, ctx_1], void 0, function* (parent, { to }, ctx) {
+        if (!ctx.user || !ctx.user.id)
+            throw new Error('Unauthenticated');
+        yield user_1.default.unfollowUser(ctx.user.id, to);
+        return true;
+    })
+};
+exports.resolvers = { queries, extraResolver, mutations };

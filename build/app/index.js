@@ -39,8 +39,9 @@ function initServer() {
         }
         type Mutation{
             ${tweet_1.Tweet.mutations}
+            ${user_1.User.mutations}
         }`,
-            resolvers: Object.assign(Object.assign({ Query: Object.assign(Object.assign({}, user_1.User.resolvers.queries), tweet_1.Tweet.resolvers.queries), Mutation: Object.assign({}, tweet_1.Tweet.resolvers.mutations) }, tweet_1.Tweet.resolvers.extraResolver), user_1.User.resolvers.extraResolver),
+            resolvers: Object.assign(Object.assign({ Query: Object.assign(Object.assign({}, user_1.User.resolvers.queries), tweet_1.Tweet.resolvers.queries), Mutation: Object.assign(Object.assign({}, tweet_1.Tweet.resolvers.mutations), user_1.User.resolvers.mutations) }, tweet_1.Tweet.resolvers.extraResolver), user_1.User.resolvers.extraResolver),
         });
         yield graphqlServer.start();
         app.use('/graphql', express_1.default.json(), (0, express4_1.expressMiddleware)(graphqlServer, {
