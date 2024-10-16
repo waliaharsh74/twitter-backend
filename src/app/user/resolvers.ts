@@ -4,6 +4,7 @@ import JWTService from "../../services/jwt";
 import { GraphqlContext } from "../../interfaces";
 import { User } from "@prisma/client";
 import UserService from "../../services/user";
+import { redisClient } from "../../clients/redis";
 interface GoogleTokenResult {
   iss?: string;
   nbf?: string;
@@ -112,6 +113,7 @@ const extraResolver = {
             }
         }
       }
+      await redisClient.set(``,``)
       return users
     },
   },
