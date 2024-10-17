@@ -1,5 +1,5 @@
 import Redis from 'ioredis'
 
-export const redisClient= new Redis(`${process.env.Redis_URL}`)
+export const redisClient= new Redis(`${process.env.REDIS_URL}`)
 
   
