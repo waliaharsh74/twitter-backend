@@ -13,6 +13,7 @@ exports.resolvers = void 0;
 const db_1 = require("../../clients/db");
 const s3_request_presigner_1 = require("@aws-sdk/s3-request-presigner");
 const client_s3_1 = require("@aws-sdk/client-s3");
+const redis_1 = require("../../clients/redis");
 const accessKeyId = process.env.S3_ACCESS;
 const secretAccessKey = process.env.S3_SECRET_ACCESS;
 if (!accessKeyId || !secretAccessKey) {
@@ -31,6 +32,9 @@ const mutations = {
         if (!((_b = ctx.user) === null || _b === void 0 ? void 0 : _b.id)) {
             throw new Error('You are not authenticated');
         }
+        const rateLimitFlag = yield redis_1.redisClient.get(`RATE_LIMIT:TWEET:${ctx.user.id}`);
+        if (rateLimitFlag)
+            throw new Error("Please wait....");
         const tweet = yield db_1.prismaClient.tweet.create({
             data: {
                 content: payload.content,
@@ -38,6 +42,8 @@ const mutations = {
                 author: { connect: { id: ctx.user.id } }
             }
         });
+        yield redis_1.redisClient.setex(`RATE_LIMIT:TWEET:${ctx.user.id}`, 10, 1);
+        yield redis_1.redisClient.del("ALL_TWEETS");
         return tweet;
     })
 };
@@ -47,7 +53,15 @@ const extraResolver = {
     }
 };
 const queries = {
-    getAllTweets: () => db_1.prismaClient.tweet.findMany({ orderBy: { createdAt: "desc" } }),
+    getAllTweets: () => __awaiter(void 0, void 0, void 0, function* () {
+        const cachedTweets = yield redis_1.redisClient.get("ALL_TWEETS");
+        console.log("cached data>>>", cachedTweets);
+        if (cachedTweets)
+            return JSON.parse(cachedTweets);
+        const tweets = yield db_1.prismaClient.tweet.findMany({ orderBy: { createdAt: "desc" } });
+        yield redis_1.redisClient.set("ALL_TWEETS", JSON.stringify(tweets));
+        return tweets;
+    }),
     getSignedURLForTweet: (parent_1, _a, ctx_1) => __awaiter(void 0, [parent_1, _a, ctx_1], void 0, function* (parent, { imageType, imageName }, ctx) {
         if (!ctx.user || !ctx.user.id)
             throw new Error('Unauthorized');

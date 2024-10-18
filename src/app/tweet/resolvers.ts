@@ -55,8 +55,9 @@ const extraResolver = {
 const queries = {
     getAllTweets: async() => {
         const cachedTweets = await redisClient.get("ALL_TWEETS");
+        console.log("cached data>>>",cachedTweets)
         if (cachedTweets) return JSON.parse(cachedTweets);
-        const tweets =prismaClient.tweet.findMany({ orderBy: { createdAt: "desc" } })
+        const tweets =await prismaClient.tweet.findMany({ orderBy: { createdAt: "desc" } })
         await redisClient.set("ALL_TWEETS", JSON.stringify(tweets));
         return tweets
     },
