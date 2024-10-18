@@ -15,6 +15,9 @@ export async function initServer() {
     //         email
     //     }
     // })
+    app.get('/',(req,res)=>{
+        res.status(200).json({msg:"everything is good"})
+    })
 
     const graphqlServer = new ApolloServer<GraphqlContext>({
         typeDefs: `

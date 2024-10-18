@@ -29,6 +29,9 @@ function initServer() {
         //         email
         //     }
         // })
+        app.get('/', (req, res) => {
+            res.status(200).json({ msg: "everything is good" });
+        });
         const graphqlServer = new server_1.ApolloServer({
             typeDefs: `
         ${user_1.User.types}
