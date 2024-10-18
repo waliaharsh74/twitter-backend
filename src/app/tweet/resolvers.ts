@@ -3,6 +3,7 @@ import { prismaClient } from "../../clients/db";
 import { GraphqlContext } from "../../interfaces";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { S3Client, PutObjectCommand, PutObjectAclCommand } from "@aws-sdk/client-s3";
+import { redisClient } from "../../clients/redis";
 
 interface CreateTweetData {
     content: string
@@ -29,6 +30,10 @@ const mutations = {
             throw new Error('You are not authenticated')
 
         }
+        const rateLimitFlag = await redisClient.get(
+            `RATE_LIMIT:TWEET:${ctx.user.id}`
+          );
+          if (rateLimitFlag) throw new Error("Please wait....");
         const tweet = await prismaClient.tweet.create({
             data: {
                 content: payload.content,
@@ -36,6 +41,8 @@ const mutations = {
                 author: { connect: { id: ctx.user.id } }
             }
         })
+        await redisClient.setex(`RATE_LIMIT:TWEET:${ctx.user.id}`, 10, 1);
+        await redisClient.del("ALL_TWEETS");
 
         return tweet
     }
@@ -46,7 +53,13 @@ const extraResolver = {
     }
 }
 const queries = {
-    getAllTweets: () => prismaClient.tweet.findMany({ orderBy: { createdAt: "desc" } }),
+    getAllTweets: async() => {
+        const cachedTweets = await redisClient.get("ALL_TWEETS");
+        if (cachedTweets) return JSON.parse(cachedTweets);
+        const tweets =prismaClient.tweet.findMany({ orderBy: { createdAt: "desc" } })
+        await redisClient.set("ALL_TWEETS", JSON.stringify(tweets));
+        return tweets
+    },
     getSignedURLForTweet: async (parent: any, { imageType, imageName }: { imageType: string, imageName: string }, ctx: GraphqlContext) => {
         if (!ctx.user || !ctx.user.id) throw new Error('Unauthorized');
         const allowedImageTypes = ["image/jpg", "image/jpeg", "image/png", "image/webp"]
